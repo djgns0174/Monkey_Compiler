@@ -24,6 +24,7 @@ func TestIntegerArithmetic(t *testing.T) {
 			expectedInstructions: []code.Instructions{
 				code.Make(code.OpConstant, 0),
 				code.Make(code.OpConstant, 1),
+				code.Make(code.OpAdd),
 			},
 		},
 	}
@@ -62,7 +63,7 @@ func parse(input string) *ast.Program {
 func testInstructions(expected []code.Instructions, actual code.Instructions) error {
 	concatted := concatInstructions(expected)
 
-	if len(actual) != len(expected) {
+	if len(actual) != len(concatted) {
 		return fmt.Errorf("wrong instructions length.\nwant=%q\ngot=%q", concatted, actual)
 	}
 
