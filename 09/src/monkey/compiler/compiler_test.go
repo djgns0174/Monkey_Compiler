@@ -59,8 +59,8 @@ func TestIntegerArithmetic(t *testing.T) {
 			},
 		},
 		{
-			input:             "1 / 2",
-			expectedConstants: []interface{}{1, 2},
+			input:             "2 / 1",
+			expectedConstants: []interface{}{2, 1},
 			expectedInstructions: []code.Instructions{
 				code.Make(code.OpConstant, 0),
 				code.Make(code.OpConstant, 1),
@@ -70,7 +70,7 @@ func TestIntegerArithmetic(t *testing.T) {
 		},
 		{
 			input:             "-1",
-			expectedConstants: []interface{}{},
+			expectedConstants: []interface{}{1},
 			expectedInstructions: []code.Instructions{
 				code.Make(code.OpConstant, 0),
 				code.Make(code.OpMinus),
@@ -101,6 +101,9 @@ func runCompilerTests(t *testing.T, tests []compilerTestCase) {
 		}
 
 		err = testConstants(t, tt.expectedConstants, bytecode.Constants)
+		if err != nil {
+			t.Fatalf("testConstants failed: %s", err)
+		}
 	}
 }
 
@@ -228,6 +231,16 @@ func TestBooleanExpressions(t *testing.T) {
 			},
 		},
 		{
+			input:             "1 < 2",
+			expectedConstants: []interface{}{2, 1},
+			expectedInstructions: []code.Instructions{
+				code.Make(code.OpConstant, 0),
+				code.Make(code.OpConstant, 1),
+				code.Make(code.OpGreaterThan),
+				code.Make(code.OpPop),
+			},
+		},
+		{
 			input:             "1 == 2",
 			expectedConstants: []interface{}{1, 2},
 			expectedInstructions: []code.Instructions{
@@ -249,7 +262,7 @@ func TestBooleanExpressions(t *testing.T) {
 		},
 		{
 			input:             "true == false",
-			expectedConstants: []interface{}{1, 2},
+			expectedConstants: []interface{}{},
 			expectedInstructions: []code.Instructions{
 				code.Make(code.OpTrue),
 				code.Make(code.OpFalse),
@@ -259,11 +272,20 @@ func TestBooleanExpressions(t *testing.T) {
 		},
 		{
 			input:             "true != false",
-			expectedConstants: []interface{}{1, 2},
+			expectedConstants: []interface{}{},
 			expectedInstructions: []code.Instructions{
 				code.Make(code.OpTrue),
 				code.Make(code.OpFalse),
 				code.Make(code.OpNotEqual),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			input:             "!true",
+			expectedConstants: []interface{}{},
+			expectedInstructions: []code.Instructions{
+				code.Make(code.OpTrue),
+				code.Make(code.OpBang),
 				code.Make(code.OpPop),
 			},
 		},
@@ -859,5 +881,132 @@ func TestBuiltins(t *testing.T) {
 			},
 		},
 	}
+	runCompilerTests(t, tests)
+}
+
+func TestClosures(t *testing.T) {
+	tests := []compilerTestCase{
+		// {
+		// 	input: `
+		// 	fn(a) {
+		// 		fn(b) {
+		// 			a + b
+		// 		}
+		// 	}
+		// 	`,
+		// 	expectedConstants: []interface{}{
+		// 		[]code.Instructions{
+		// 			code.Make(code.OpGetFree, 0),
+		// 			code.Make(code.OpGetLocal, 0),
+		// 			code.Make(code.OpAdd),
+		// 			code.Make(code.OpReturnValue),
+		// 		},
+		// 		[]code.Instructions{
+		// 			code.Make(code.OpGetLocal, 0),
+		// 			code.Make(code.OpClosure, 0, 1),
+		// 			code.Make(code.OpReturnValue),
+		// 		},
+		// 	},
+		// 	expectedInstructions: []code.Instructions{
+		// 		code.Make(code.OpClosure, 1, 0),
+		// 		code.Make(code.OpPop),
+		// 	},
+		// },
+		{
+			input: `
+			fn(a) {
+				fn(b) {
+					fn(c) {
+						a + b + c
+					}
+				}
+			};
+			`,
+			expectedConstants: []interface{}{
+				[]code.Instructions{
+					code.Make(code.OpGetFree, 0),
+					code.Make(code.OpGetFree, 1),
+					code.Make(code.OpAdd),
+					code.Make(code.OpGetLocal, 0),
+					code.Make(code.OpAdd),
+					code.Make(code.OpReturnValue),
+				},
+				[]code.Instructions{
+					code.Make(code.OpGetFree, 0),
+					code.Make(code.OpGetLocal, 0),
+					code.Make(code.OpClosure, 0, 2),
+					code.Make(code.OpReturnValue),
+				},
+				[]code.Instructions{
+					code.Make(code.OpGetLocal, 0),
+					code.Make(code.OpClosure, 1, 1),
+					code.Make(code.OpReturnValue),
+				},
+			},
+			expectedInstructions: []code.Instructions{
+				code.Make(code.OpClosure, 2, 0),
+				code.Make(code.OpPop),
+			},
+		},
+		// {
+		// 	input: `
+		// 	let global = 55;
+
+		// 	fn() {
+		// 		let a = 66;
+
+		// 		fn() {
+		// 			let b = 77;
+
+		// 			fn() {
+		// 				let c = 88;
+
+		// 				global + a + b + c;
+		// 			}
+		// 		}
+		// 	}
+		// 	`,
+		// 	expectedConstants: []interface{}{
+		// 		55,
+		// 		66,
+		// 		77,
+		// 		88,
+		// 		[]code.Instructions{
+		// 			code.Make(code.OpConstant, 3),
+		// 			code.Make(code.OpSetLocal, 0),
+		// 			code.Make(code.OpGetGlobal, 0),
+		// 			code.Make(code.OpGetFree, 0),
+		// 			code.Make(code.OpAdd),
+		// 			code.Make(code.OpGetFree, 1),
+		// 			code.Make(code.OpAdd),
+		// 			code.Make(code.OpGetLocal, 0),
+		// 			code.Make(code.OpAdd),
+		// 			code.Make(code.OpReturnValue),
+		// 		},
+		// 		[]code.Instructions{
+		// 			code.Make(code.OpConstant, 2),
+		// 			code.Make(code.OpSetLocal, 0),
+		// 			code.Make(code.OpGetFree, 0),
+		// 			code.Make(code.OpGetLocal, 0),
+		// 			code.Make(code.OpClosure, 4, 2),
+		// 			code.Make(code.OpReturnValue),
+		// 		},
+		// 		[]code.Instructions{
+		// 			code.Make(code.OpConstant, 1),
+		// 			code.Make(code.OpSetLocal, 0),
+		// 			code.Make(code.OpGetLocal, 0),
+		// 			code.Make(code.OpClosure, 5, 1),
+		// 			code.Make(code.OpReturnValue),
+		// 		},
+		// 	},
+		// 	expectedInstructions: []code.Instructions{
+		// 		code.Make(code.OpConstant, 0),
+		// 		code.Make(code.OpSetGlobal, 0),
+		// 		code.Make(code.OpClosure, 6, 0),
+		// 		code.Make(code.OpPop),
+		// 	},
+		// },
+	}
+
 	runCompilerTests(t, tests)
 }
