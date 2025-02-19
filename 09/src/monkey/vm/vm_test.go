@@ -580,3 +580,65 @@ func TestBuiltinFunctions(t *testing.T) {
 
 	runVmTests(t, tests)
 }
+
+func TestClosures(t *testing.T) {
+	tests := []vmTestCase{
+		{
+			input: `
+			let newClosure = fn(a) {
+				fn() { a; };
+			};
+			let closure = newClosure(99);
+			closure();
+			`,
+			expected: 99,
+		},
+		{
+			input: `
+			let newAdder = fn(a, b){
+				fn(c) { a + b + c };
+			};
+			let adder = newAdder(1, 2);
+			adder(8)
+			`,
+			expected: 11,
+		},
+	}
+
+	runVmTests(t, tests)
+}
+
+func TestRecursiveFunctions(t *testing.T) {
+	tests := []vmTestCase{
+		{
+			input: `
+			let countDown = fn(x) {
+				if (x == 0){
+					return 0;
+				} else {
+				 	countDown(x - 1);
+				}
+			};
+			countDown(1);
+			`,
+			expected: 0,
+		},
+		{
+			input: `
+			let wrapper = fn(){
+				let countDown = fn(x){
+					if (x == 0) {
+						return 0;
+					} else {
+						countDown(x - 1);
+					}
+				};
+				countDown(1);
+			}
+			wrapper();
+			`,
+			expected: 0,
+		},
+	}
+	runVmTests(t, tests)
+}
