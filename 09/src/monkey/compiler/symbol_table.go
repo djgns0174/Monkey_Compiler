@@ -50,7 +50,7 @@ func (s *SymbolTable) DefineBuiltin(index int, name string) Symbol {
 func (s *SymbolTable) Resolve(name string) (Symbol, bool) {
 	obj, ok := s.store[name]
 	if !ok && s.Outer != nil {
-		obj, ok = s.Outer.Resolve(name)
+		obj, ok = s.Outer.Resolve(name) // 이 부분이 반환점이 돼서  변수들의 스코프를 설정해줌
 		if !ok {
 			return obj, ok
 		}
